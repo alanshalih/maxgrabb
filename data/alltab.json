@@ -1,0 +1,12 @@
+{
+  "tabs": [
+    {
+      "tab": "Tab 1",
+      "id": "tab-1",
+      "uniq_code": "JIkOTqDdI",
+      "menu": false,
+      "route": "list",
+      "params": {}
+    }
+  ]
+}

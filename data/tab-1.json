@@ -1,0 +1,32 @@
+{
+  "lists": [
+    {
+      "title": "hai",
+      "id": "V9BL77DP-",
+      "total": 0
+    }
+  ],
+  "contacts": [],
+  "campaigns": [
+    {
+      "counter": 0,
+      "title": "sdf",
+      "lists": [
+        {
+          "title": "hai",
+          "id": "V9BL77DP-",
+          "total": 0
+        }
+      ],
+      "contacts": [],
+      "message": "sdf",
+      "image": "C:\\laragon\\www\\jualin.id\\public\\assets\\img\\theme\\angular.jpg",
+      "id": "dQDdNaXkZ",
+      "sending_rule": "send_to_all",
+      "sending_batch": 100,
+      "delay_from": 5,
+      "delay_to": 15,
+      "sent_listed": {}
+    }
+  ]
+}

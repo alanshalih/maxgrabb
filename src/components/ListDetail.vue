@@ -7,9 +7,10 @@
                       
       <v-container>
             <v-btn @click="$emit('routeTo',{tab_id : tab.id, route : 'grabb-contact', params : {id : list.id}})">GRABB KONTAK</v-btn>
+             <v-btn class="ml-2" @click="$emit('routeTo',{tab_id : tab.id, route : 'import-contact', params : {id : list.id}})">IMPORT/EXPORT</v-btn>
       </v-container>
 
-<div style="overflow:auto;max-height:70vh;">
+<div style="overflow:auto;max-height:calc(100vh - 210px);">
     <v-list>
     <span  v-for="contact in contacts" >
         <v-list-item link >
@@ -18,7 +19,9 @@
         <v-list-item-subtitle>{{contact.phone}}</v-list-item-subtitle>
       </v-list-item-content>
     </v-list-item>
-    <v-divider></v-divider>
+    <v-divider>
+        
+    </v-divider>
     </span>
 </v-list>
 </div>

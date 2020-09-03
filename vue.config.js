@@ -7,8 +7,10 @@ module.exports = {
   },
   pluginOptions: {
     electronBuilder: {
+      
       preload: 'src/whatsapp.js',
       nodeIntegration: true,
+      
     }
   }
 }

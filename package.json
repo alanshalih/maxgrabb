@@ -1,6 +1,7 @@
 {
-  "name": "my-wegrabb",
-  "version": "0.1.0",
+  "name": "MaxGrabb",
+  "version": "0.1.3",
+  "author": "WeGrabb corp",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -12,9 +13,13 @@
   },
   "main": "background.js",
   "dependencies": {
+    "axios": "^0.19.2",
     "electron-is-dev": "^1.2.0",
+    "libphonenumber-js": "^1.7.53",
     "lowdb": "^1.0.0",
+    "node-machine-id": "^1.1.12",
     "shortid": "^2.2.15",
+    "update-electron-app": "^1.5.0",
     "vue": "^2.6.11",
     "vue-router": "^3.2.0",
     "vuetify": "^2.2.11",
@@ -25,6 +30,8 @@
     "@vue/cli-plugin-vuex": "~4.4.0",
     "@vue/cli-service": "~4.4.0",
     "electron": "^9.0.0",
+    "electron-winstaller": "^4.0.1",
+    "electron-wix-msi": "^3.0.0",
     "node-sass": "^4.12.0",
     "sass": "^1.19.0",
     "sass-loader": "^8.0.2",

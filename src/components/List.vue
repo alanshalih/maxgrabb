@@ -39,6 +39,7 @@ export default {
     data:()=>({
         lists : [],
         new_list : '',
+
     }),
     mounted(){
         this.lists = ipc.sendSync('lists',this.tab);
