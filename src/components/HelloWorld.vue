@@ -15,7 +15,7 @@
 
       <div class="v-tabs theme--dark">
         <div role="tablist"
-          class="v-item-group theme--dark v-slide-group v-tabs-bar v-tabs-bar--is-mobile white--text primary"
+          class="v-item-group theme--dark v-slide-group v-tabs-bar v-tabs-bar--is-mobile white--text purple darken-3"
           data-booted="true">
           <div class="v-slide-group__prev v-slide-group__prev--disabled">
             <!---->
@@ -61,15 +61,22 @@
 
 
 
-              <v-btn text @click="item.menu = true;routeTo({tab_id : item.id, route : 'list'})">
+              <v-btn :text="!routeList(item)" :class="{'purple  white--text' : routeList(item) }"
+                @click="item.menu = true;routeTo({tab_id : item.id, route : 'list'})">
                 List
               </v-btn>
-              <v-btn text @click="item.menu = true;routeTo({tab_id : item.id, route : 'campaign'})">
+              <v-btn :text="!routeCampaign(item)" :class="{'purple  white--text' : routeCampaign(item) }"
+                @click="item.menu = true;routeTo({tab_id : item.id, route : 'campaign'})">
                 Campaign
               </v-btn>
+              <v-btn :text="!routeSetting(item)" :class="{'purple white--text' : routeSetting(item) }"
+                @click="item.menu = true;routeTo({tab_id : item.id, route : 'setting'})">
+                Setting
+              </v-btn>
+
 
               <v-spacer></v-spacer>
-
+              <small> Version {{versi}}</small>
 
               <v-menu bottom left>
                 <template close-on-click v-slot:activator="{ on, attrs }">
@@ -88,26 +95,31 @@
                   <v-list-item @click="Refresh(item,index)">
                     <v-list-item-title>Refresh</v-list-item-title>
                   </v-list-item>
-                  <v-list-item @click="openDevTools(item,index)">
-                    <v-list-item-title>Open DevTools</v-list-item-title>
-                  </v-list-item>
                   <v-list-item @click="close(item,index)">
                     <v-list-item-title>Tutup Tab</v-list-item-title>
                   </v-list-item>
                 </v-list>
+
               </v-menu>
             </v-toolbar>
             <v-row no-gutters>
               <v-col v-if="item.menu" :cols="item.menu ? 3 : 0">
 
 
-                <list v-if="item.route == 'list'" @routeTo="routeTo" :tab="item"></list>
-                <listDetail v-if="item.route == 'list-detail'" @routeTo="routeTo" :tab="item"></listDetail>
-                <scrapeContact v-if="item.route == 'grabb-contact'" @routeTo="routeTo" :tab="item"></scrapeContact>
-                <Campaigns v-if="item.route == 'campaign'" @routeTo="routeTo" :tab="item"></Campaigns>
-                <CampaignCreate v-if="item.route == 'create-campaign'" @routeTo="routeTo" :tab="item"></CampaignCreate>
-                <CampaignDetail v-if="item.route == 'campaign-detail'" @routeTo="routeTo" :tab="item"></CampaignDetail>
-                <ImportContact v-if="item.route == 'import-contact'" @routeTo="routeTo" :tab="item"></ImportContact>
+                <div>
+                  <list v-if="item.route == 'list'" @routeTo="routeTo" :tab="item"></list>
+                  <listDetail v-if="item.route == 'list-detail'" @routeTo="routeTo" :tab="item"></listDetail>
+                  <scrapeContact v-if="item.route == 'grabb-contact'" @routeTo="routeTo" :tab="item"></scrapeContact>
+                  <Campaigns v-if="item.route == 'campaign'" @routeTo="routeTo" :tab="item"></Campaigns>
+                  <CampaignCreate v-if="item.route == 'create-campaign'" @routeTo="routeTo" :tab="item">
+                  </CampaignCreate>
+                  <CampaignDetail v-if="item.route == 'campaign-detail'" @routeTo="routeTo" :tab="item">
+                  </CampaignDetail>
+                  <ImportContact v-if="item.route == 'import-contact'" @routeTo="routeTo" :tab="item"></ImportContact>
+                   <DeleteContact v-if="item.route == 'delete-contact'" @routeTo="routeTo" :tab="item"></DeleteContact>
+                  <Setting v-if="item.route == 'setting'" @routeTo="routeTo" :licence_data="licence_data" :tab="item">
+                  </Setting>
+                </div>
               </v-col>
               <v-col :cols="item.menu ? 9 : 12">
                 <webview :preload="path" nodeintegration :id="item.id" src="https://web.whatsapp.com"
@@ -125,34 +137,34 @@
 
 
     </v-card>
+    <div class="purple darken-4" style="height : 100vh;" v-if="app_enabled == false && loading == false">
+      <v-container>
+        <v-row>
 
-    <v-container v-if="app_enabled == false && loading == false">
-      <v-row>
+          <v-col style="margin-top : 200px;" md="6" offset-md="3" lg="4" offset-lg="4">
+            <v-card>
+              <v-card-text>
+                <v-alert v-if="error" type="error">
+                  Kode Akses tidak diterima
+                </v-alert>
 
-        <v-col md="12" lg="6">
-          <v-alert
-          v-if="error"
-      type="error"
-    >
-      Kode Akses tidak diterima
-    </v-alert>
+                <div class="title">SELAMAT DATANG DI APLIKASI MAXGRABB</div>
+                <p>silakan masukan Kode Akses yang terdapat pada Dashboard MaxGrabb</p>
+                <v-text-field label="Kode Akses" class="" v-model="access_code"></v-text-field>
+                <v-btn class="purple darken-2 white--text" @click="registerApp()">REGISTER</v-btn>
+                <!-- <p class="mt-3">belum punya Kode Akses? </p> -->
+                <v-btn class="ml-3" @click="buyMaxGrabb()" color="success">Dapatkan Kode Akses</v-btn>
+              </v-card-text>
+            </v-card>
+          </v-col>
 
-          <h1>SELAMAT DATANG DI APLIKASI MAXGRABB</h1>
-          <v-text-field label="Kode Akses" class="" v-model="access_code"></v-text-field>
-          <v-btn color="primary" @click="registerApp()">REGISTER</v-btn>
-          <!-- <p class="mt-3">belum punya Kode Akses? </p> -->
-          <v-btn class="ml-3" @click="buyMaxGrabb()" color="success" >Dapatkan Kode Akses</v-btn>
-        </v-col>
+        </v-row>
 
-      </v-row>
+      </v-container>
+    </div>
 
-    </v-container>
     <div v-if="loading" style="display:flex;justify-content:center;align-items:center;height:600px;">
-         <v-progress-circular
-      :size="50"
-      color="primary"
-      indeterminate
-    ></v-progress-circular>
+      <v-progress-circular :size="50" color="purple darken-3" indeterminate></v-progress-circular>
 
     </div>
   </div>
@@ -165,6 +177,10 @@
   const {
     dialog
   } = require('electron').remote
+  import {
+    nativeImage,
+    clipboard
+  } from 'electron'
   const fs = require('fs');
   import list from './List'
   import listDetail from './ListDetail'
@@ -173,33 +189,43 @@
   import CampaignCreate from './CampaignCreate'
   import axios from "axios"
   import CampaignDetail from './CampaignDetail'
+  import Setting from './Setting'
   import ImportContact from './ImportContact'
+  import DeleteContact from './DeleteContact'
+  
   const isDev = require('electron-is-dev');
   const path = require('path');
   const getSourceDirectory = () => isDev ?
-path.join(process.cwd(), 'dist_electron') // or wherever your local build is compiled
+    path.join(process.cwd(), 'dist_electron') // or wherever your local build is compiled
     :
     __dirname; // asar location
   const shortid = require('shortid');
   const preload = path.join(getSourceDirectory(), '/preload.js');
 
+const contextMenu = require('electron-context-menu');
 
+// const webview = document.querySelector("#webview");
+// contextMenu({
+//   window: webview
+// });
 
   export default {
     data() {
       return {
+        failed_msg : [],
         tab: 'home',
         machineId: '',
-        error : false,
-        loading : true,
+        error: false,
+        loading: true,
+        versi: '',
         app_enabled: false,
         access_code: '',
         path: preload,
         webview: {},
-        licence_data : {},
+        licence_data: {},
         items: [],
-        queue_message : [],
-        endpoint : "https://manage.wegrabb.com",
+        queue_message: [],
+        endpoint: "https://manage.wegrabb.com",
         view: {},
       }
     },
@@ -210,30 +236,36 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
       CampaignCreate,
       Campaigns,
       CampaignDetail,
-      ImportContact
+      ImportContact,
+      DeleteContact,
+      Setting
     },
+
     mounted() {
 
-      if(isDev){
-        this.endpoint = 'http://wegrabb.test'
-      }
+      // if(isDev){
+      //   this.endpoint = 'http://wegrabb.test'
+      // }
 
       this.machineId = ipc.sendSync('machineId');
 
+      this.versi = ipc.sendSync('version');
+
       var data = localStorage.getItem('access_data');
-      if(data)
-      {
+      if (data) {
         data = JSON.parse(data);
-        if(data.access_code)
-        {
+        if (data.access_code) {
           this.access_code = data.access_code;
           this.registerApp();
         }
-      }else{
+      } else {
         this.loading = false;
       }
 
-      
+
+ 
+
+
 
 
 
@@ -241,8 +273,28 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
 
     },
     methods: {
-      buyMaxGrabb()
-      {
+      routeSetting(item) {
+        if (['setting'].includes(item.route)) {
+          return true;
+        } else {
+          return false;
+        }
+      },
+      routeCampaign(item) {
+        if (['create-campaign', 'campaign', 'campaign-detail'].includes(item.route)) {
+          return true;
+        } else {
+          return false;
+        }
+      },
+      routeList(item) {
+        if (['list', 'list-detail', 'grabb-contact', 'import-contact','delete-contact'].includes(item.route)) {
+          return true;
+        } else {
+          return false;
+        }
+      },
+      buyMaxGrabb() {
         shell.openExternal("https://manage.wegrabb.com/checkout/maxgrabb")
       },
       initApp() {
@@ -250,49 +302,74 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
 
 
         setTimeout(() => {
-          if (this.items.length > 0){
-             this.tab = 'tab-1'
-              this.willNavigate(this.items[0]);
-           
+          if (this.items.length > 0) {
+            this.tab = 'tab-1'
+            this.willNavigate(this.items[0]);
+
           }
-          
 
-            this.items.forEach(tab => {
-              const webview = document.getElementById(tab.id);
-              webview.reloadIgnoringCache()
-              webview.addEventListener('ipc-message', (event) => {
+          var webview = {};
 
-                if (event.channel == 'paste-image') {
-                  ipc.send('copy-image', event.args[0]);
-                  setTimeout(() => {
-                    webview.paste();
-                  }, 1000)
+          this.items.forEach(tab => {
+            const webview = document.getElementById(tab.id);
+            
 
-                }
-              });
+        
+
+
+            this.loadTrainingMessage(tab);
+            contextMenu({
+              window: webview,
+              append: (params, browserWindow) => [],
             });
+            
+            webview.addEventListener('ipc-message', (event) => {
 
-            if(this.items.length == 0)
-            {
-              this.addTabs();
+              if (event.channel == 'paste-image') {
+                const web = document.getElementById(event.args[0].tab_id);
+                const image = nativeImage.createFromDataURL(event.args[0].image_data_url)
+                clipboard.writeImage(image);
+                web.paste();
+              }
 
-            }
+                if (event.channel == 'wa-not-found') {
+                     this.failed_msg.push(event.args[0])
+                }
+
+                if(event.channel == 'number-not-found')
+                {
+                  var message = event.args[0];
+                  axios.post(this.endpoint+'/api/maxgrabb/register-phone',{warming_up : false, phone : message.phone}).then(response=>{})
+                }
+
+
+             
+
+            });
+            setTimeout(()=>{
+              webview.reloadIgnoringCache();
+            },100)
+
+          });
+
+          if (this.items.length == 0) {
+            this.addTabs();
+
+          }
 
         }, 1000)
       },
       registerApp() {
         this.loading = true;
-        axios.post(this.endpoint+"/api/register-app", {
+        axios.post(this.endpoint + "/api/register-app", {
           machineId: this.machineId,
           access_code: this.access_code
         }).then(response => {
-          if(response.data.id)
-          {
+          if (response.data.id) {
             this.app_enabled = true;
-            localStorage.setItem('access_data',JSON.stringify(response.data))
+            localStorage.setItem('access_data', JSON.stringify(response.data))
             this.licence_data = response.data;
-            if(this.licence_data.api_enabled)
-            {
+            if (this.licence_data.api_enabled) {
               this.fetchApi();
             }
             this.initApp();
@@ -300,41 +377,73 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
           }
         }, error => {
           this.error = true;
-               this.loading = false;
+          this.loading = false;
         })
       },
-      fetchApi()
-      {
-        setTimeout(()=>{
+      fetchApi() {
+        setTimeout(() => {
           this.triggerSending();
+          this.uploadFailedMessage();
+        }, 60 * 1000)
+
+      },
+      loadTrainingMessage(tab)
+      {
+        if(tab.warming_up)
+        {
+            clearInterval(tab.interval)
+            tab.interval = setInterval(()=>{
+              const webview = document.getElementById(tab.id);
+              axios.post(this.endpoint+'/api/maxgrabb/training-message').then(response=>{
+                var message = response.data;
+                message.tab_id = tab.id;
+                message.warming_up = true;
+              webview.send("send-message", message);
+
+              })
+            },tab.training_message_delay*1000*60)
+        }
+      
+      },
+      uploadFailedMessage()
+      {
+        setInterval(()=>{
+          if(this.failed_msg.length > 0)
+          {
+            axios.post(this.endpoint + "/api/maxgrabb/kirim", {
+                access_code: this.licence_data.access_code,
+                data : this.failed_msg
+              }).then(response => {
+                  this.failed_msg = [];
+              })
+          }
         },60*1000)
       },
-      triggerSending(){
-             this.sendMessage();
-             var time = this.randomIntFromInterval(9,16);
-                  setTimeout(()=>{
-                    this.triggerSending();
-                  },time*1000)
+      triggerSending() {
+        this.sendMessage();
+        var time = this.randomIntFromInterval(9, 16);
+        setTimeout(() => {
+          this.triggerSending();
+        }, time * 1000)
       },
       randomIntFromInterval(min, max) { // min and max included 
-          return Math.floor(Math.random() * (max - min + 1) + min);
+        return Math.floor(Math.random() * (max - min + 1) + min);
       },
-      sendMessage()
-      {
-        
+      sendMessage() {
 
-        axios.post(this.endpoint+"/api/maxgrabb/message",{ access_code : this.licence_data.access_code}).then(response=>{
-          if(response.data.length > 0)
-          {
-            response.data.forEach(item=>{
+
+        axios.post(this.endpoint + "/api/maxgrabb/message", {
+          access_code: this.licence_data.access_code
+        }).then(response => {
+          if (response.data.length > 0) {
+            response.data.forEach(item => {
               const webview = document.getElementById(item.tab_id);
-              webview.send("send-message",item);
+              webview.send("send-message", item);
             })
-            
           }
         })
-          
-         
+
+
 
       },
       willNavigate(tab) {
@@ -435,8 +544,8 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
                 tab: 'Tab ' + i,
                 id: 'tab-' + i,
                 uniq_code: shortid.generate(),
-                menu: false,
-                route: 'list',
+                menu: true,
+                route: 'setting',
                 params: {}
               };
               this.items.push(data)
@@ -444,14 +553,24 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
               ipc.sendSync('add-tabs', data);
               setTimeout(() => {
 
-                axios.post(this.endpoint+"/api/app-license/tabs",{access_code : this.licence_data.access_code, data : JSON.stringify(this.items)});
-            
+                axios.post(this.endpoint + "/api/app-license/tabs", {
+                  access_code: this.licence_data.access_code,
+                  data: JSON.stringify(this.items)
+                });
+
                 const webview = document.getElementById(data.id);
                 webview.addEventListener('ipc-message', (event) => {
 
                   if (event.channel == 'paste-image') {
+                    const image = nativeImage.createFromDataURL(event.args[0].image_data_url)
+                    clipboard.writeImage(image);
                     webview.paste();
                   }
+
+                  if (event.channel == 'wa-not-found') {
+                   this.failed_msg.push(event.args[0])
+                  }
+
                 });
               }, 3000)
 
@@ -462,34 +581,22 @@ path.join(process.cwd(), 'dist_electron') // or wherever your local build is com
         }
 
       },
-      sendJS(tab) {
-        const webview = document.getElementById(tab.id);
-        webview.executeJavaScript(
-          "document.querySelector('#main > footer > div._3ee1T._1LkpH.copyable-area > div:nth-child(3) > button')");
-
-
-      },
       close(item, index) {
         this.items.splice(index, 1);
         ipc.sendSync('close-tab', {
           id: item.id
         });
-          axios.post(this.endpoint+"/api/app-license/tabs",{access_code : this.licence_data.access_code, data : JSON.stringify(this.items)});
+        axios.post(this.endpoint + "/api/app-license/tabs", {
+          access_code: this.licence_data.access_code,
+          data: JSON.stringify(this.items)
+        });
       },
-      writeText(tab) {
-        const webview = document.getElementById(tab.id);
-        webview.paste();
-        console.log('paste')
-
-      },
-      Refresh(teb) {
+      Refresh(tab) {
         const webview = document.getElementById(tab.id);
         webview.reloadIgnoringCache();
       },
       openDevTools(tab) {
         const webview = document.getElementById(tab.id);
-
-
         webview.openDevTools();
       }
     }

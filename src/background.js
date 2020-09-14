@@ -8,20 +8,21 @@ import {
   clipboard,
   nativeImage
 } from 'electron'
+import {version} from '../package.json';
+import { autoUpdater } from "electron-updater"
+autoUpdater.logger = require("electron-log")
+autoUpdater.logger.transports.file.level = "info"
+const log = require('electron-log');
 import {machineId, machineIdSync} from 'node-machine-id';
 const low = require('lowdb')
 const path = require('path');
 const FileSync = require('lowdb/adapters/FileSync')
 var adapter = {};
 var db = {};
+var failed_message  = [];
 var fs = require('fs');
 var dir = app.getPath('userData')+'/data';
-// const isDev = require('electron-is-dev');
-// const getSourceDirectory = () => isDev ?
-// __dirname+'\/bundled' // or wherever your local build is compiled
-//     :
-//     path.join(__dirname, 'assets');; // asar location
-//   const img = path.join(getSourceDirectory(), '/maxgrabb.ico');
+
 
 const imageData = require("./logo")
 var img = nativeImage.createFromDataURL(imageData()); 
@@ -69,7 +70,7 @@ protocol.registerSchemesAsPrivileged([{
 }])
 
 function createWindow() {
-
+  log.info('Start Apps');
  
   // Create the browser window.
   win = new BrowserWindow({
@@ -97,14 +98,18 @@ function createWindow() {
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
     win.removeMenu()
+    autoUpdater.checkForUpdatesAndNotify()
+   
   }
 
   win.on('closed', () => {
     win = null
   })
 
-  console.log();
 }
+
+
+
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -122,9 +127,18 @@ ipcMain.on('machineId', (event, arg) => {
 })
 
 
+ipcMain.on('version', (event, arg) => {  
+  event.returnValue = app.getVersion();
+})
+
+
+
 ipcMain.on('dirname', (event, arg) => {  
   event.returnValue = __dirname;
 })
+
+
+
 
 
 ipcMain.on('tabs', (event, arg) => {
@@ -208,6 +222,21 @@ ipcMain.on('close-tab', (event, arg) => {
 
 })
 
+ipcMain.on('update-tab', (event, arg) => {
+
+  var data = JSON.parse(JSON.stringify(arg));
+  db.alltab.get('tabs')
+  .find({
+    uniq_code: arg.uniq_code
+  })
+  .assign(data)
+  .write()
+
+  event.returnValue = 'OK';
+
+
+})
+
 ipcMain.on('lists', (event, arg) => {
 
 
@@ -248,7 +277,7 @@ ipcMain.on('add-list', (event, arg) => {
 
 
   var list = db[arg.id].get('lists')
-    .push(arg.data)
+    .unshift(arg.data)
     .write()
 
   event.returnValue = 'OK';
@@ -260,7 +289,7 @@ ipcMain.on('add-campaign', (event, arg) => {
 
 
   var list = db[arg.id].get('campaigns')
-    .push(arg.data)
+    .unshift(arg.data)
     .write()
 
   event.returnValue = 'OK';
@@ -270,14 +299,14 @@ ipcMain.on('add-campaign', (event, arg) => {
 
 ipcMain.on('add-contact', (event, arg) => {
 
+  
+
 
   var list = db[arg.id].get('contacts')
     .push(arg.data)
     .write()
 
-  event.returnValue = 'OK';
-
-
+   event.returnValue = 'OK';
 })
 
 ipcMain.on('get-list', (event, arg) => {
@@ -294,16 +323,45 @@ ipcMain.on('get-list', (event, arg) => {
 
 })
 
+
+ipcMain.on('asynchronous-message', (event, arg) => {
+  console.log(arg)
+  event.reply('asynchronous-reply', arg)
+})
+
+
+ipcMain.on('delete-list', (event, arg) => {
+
+  var list = db[arg.id].get('lists')
+  .remove({ id: arg.params.id })
+  .write()
+
+  var contacts = db[arg.id].get('contacts')
+  .remove({
+    list_id: arg.params.id
+  })
+  .write()
+
+event.returnValue = 'OK';
+  
+
+})
+
+
 ipcMain.on('update-list', (event, arg) => {
 
+  var data = {};
+  data.total  = arg.total;
+  if(arg.headers)
+  {
+    data.headers = arg.headers;
+  }
 
   var list = db[arg.tab_id].get('lists')
     .find({
       id: arg.list_id
     })
-    .assign({
-      total: arg.total
-    })
+    .assign(data)
     .write()
 
   event.returnValue = 'OK';
@@ -312,8 +370,6 @@ ipcMain.on('update-list', (event, arg) => {
 })
 
 ipcMain.on('contacts', (event, arg) => {
-
-
   var contacts = db[arg.id].get('contacts')
     .filter({
       list_id: arg.params.id
@@ -321,8 +377,57 @@ ipcMain.on('contacts', (event, arg) => {
     .value()
 
   event.returnValue = contacts;
+})
 
+ipcMain.on('search-contacts', (event, arg) => {
+  var contacts = db[arg.id].get('contacts')
+    .filter({
+      list_id: arg.params.id
+    })
+    .value()
+    arg.search = arg.search.toLowerCase();
+    event.returnValue =  contacts.filter(item=>{
+        return item.name.toLowerCase().includes(arg.search) ||  item.wa_phone.toLowerCase().includes(arg.search)
+    })
 
+})
+ipcMain.on('get-contacts', (event, arg) => {
+  var from = 0;
+  var to = 100;
+  if(arg.page > 1)
+  {
+    from = 100 * arg.page;
+    to = 100+100*arg.page;
+  }
+  var contacts = db[arg.id].get('contacts')
+    .filter({
+      list_id: arg.params.id
+    })
+    .slice(from,to)
+    .value()
+
+  event.returnValue = contacts;
+})
+
+ipcMain.on('delete-contact', (event, arg) => {
+  var contacts = db[arg.id].get('contacts')
+    .remove({
+      list_id: arg.params.list_id,
+      wa_phone : arg.params.wa_phone
+    })
+    .write()
+
+  event.returnValue = contacts;
+})
+
+ipcMain.on('force-delete-contact', (event, arg) => {
+  var contacts = db[arg.id].get('contacts')
+    .remove({
+      wa_phone : arg.wa_phone
+    })
+    .write()
+
+  event.returnValue = contacts;
 })
 
 
@@ -338,23 +443,41 @@ ipcMain.on('copy-image', (event, arg) => {
 })
 
 
+ipcMain.on('view-image', (event, arg) => {
+
+
+  const image = nativeImage.createFromPath(arg)
+  event.returnValue = image.toDataURL();
+
+})
+
+
 
 ipcMain.on('update-campaign', (event, arg) => {
 
+  
   var list = db[arg.tab_id].get('campaigns')
   .find({
     id: arg.id
   })
   .assign({
-    counter: arg.counter,
-    sent_listed : arg.sent_listed
+    image : arg.image,
+    message : arg.message,
+    sending_rule : arg.sending_rule,
+    sending_batch : arg.sending_batch,
+    delay_from : arg.delay_from,
+    delay_to : arg.delay_to,
+    sent_listed : arg.sent_listed,
+    counter : arg.counter,
+    title : arg.title
+
   })
   .write()
 
 event.returnValue = 'OK';
-  
-
 })
+
+
 
 ipcMain.on('delete-campaign', (event, arg) => {
 
@@ -366,6 +489,7 @@ event.returnValue = 'OK';
   
 
 })
+
 
 
 app.on('activate', () => {

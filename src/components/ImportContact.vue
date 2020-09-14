@@ -17,7 +17,15 @@
             <p>Siapkan File CSV dengan format kolom pertama berisi <b>nama</b>, dan kolom kedua berisi <b>no.WA</b></p>
             <v-btn @click="$emit('routeTo',{route : 'list-detail', tab_id : tab.id, params : {id : list.id}})">Kembali
             </v-btn>
-            <v-btn class="ml-2" @click="importContact">Pilih File</v-btn>
+
+            <v-btn class="ml-2 purple white--text" @click="importContact()">Pilih File</v-btn>
+            <div class="mt-4">
+
+              <v-progress-circular v-if="receive_contact < member_numbers" :rotate="360" :size="130" :width="15"
+                :value="progress_value" color="purple">
+                {{receive_contact}} / {{ member_numbers }}
+              </v-progress-circular>
+            </div>
             <v-alert class="mt-3" v-if="personal_contact_success" type="info">
               {{personal_contact_success}}
             </v-alert>
@@ -29,13 +37,52 @@
           <v-container fluid>
             <v-select v-model="delimiter" label="Pilih Delimiter"
               :items="[{text : '; (titik koma)', value  : ';'},{text : ', (koma)', value  : ','}]"></v-select>
-            <v-btn @click="exportFile()">Simpan File</v-btn>
+            <v-btn class="purple white--text" @click="exportFile()">Simpan File</v-btn>
           </v-container>
         </v-tab-item>
       </v-tabs>
 
 
     </v-container>
+    <v-dialog v-model="dialog" persistent scrollable max-width="800px">
+      <v-card>
+        <v-card-title>
+          <span class="headline">Upload Contact</span>
+        </v-card-title>
+        <v-card-text>
+
+          <v-alert v-if="error_upload_text" type="error">
+            {{error_upload_text}}
+          </v-alert>
+
+          <table>
+            <tr>
+              <th v-for="(header,index) in sample_rows[0]">
+                <v-text-field v-model="sample_rows[0][index]"></v-text-field>
+              </th>
+
+            </tr>
+            <tr>
+              <th v-for="(header,index) in sample_rows[0]">
+                <v-btn @click="removeColumn(index)" color="error">
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </th>
+            </tr>
+            <tr v-for="(row,index) in sample_rows" v-if="index > 0">
+              <td v-for="col in row">{{col}}</td>
+            </tr>
+          </table>
+
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="error darken-1" text @click="dialog = false">TUTUP</v-btn>
+          <v-btn color="purple white--text darken-1" @click="saveData()">SIMPAN</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
   </div>
 </template>
 
@@ -54,8 +101,10 @@
   export default {
     props: ['tab'],
     data: () => ({
+      dialog: false,
       contacts: [],
       delimiter: ';',
+      error_upload_text: '',
       contact_obj: {},
       personal_contact_success: '',
       member_numbers: 0,
@@ -65,6 +114,9 @@
       receive_contact: 0,
       status: 'ready',
       list: {},
+      sample_rows: [],
+      full_data: [],
+      json_data: [],
       ip_data: {}
     }),
     mounted() {
@@ -77,12 +129,128 @@
         })
       }
 
+
+
+
+
+
       axios.get('https://extreme-ip-lookup.com/json/').then(response => {
         this.ip_data = response.data;
       })
 
     },
     methods: {
+      removeColumn(index) {
+        this.sample_rows.forEach(item => {
+          item.splice(index, 1)
+        })
+        this.full_data.forEach(item => {
+          item.splice(index, 1)
+        })
+      },
+      checkHeader(sample, full = false) {
+        var header = sample[0];
+        var null_array = [];
+        var has_header = header.find(item => {
+          null_array.push('');
+          return item.includes('phone') | item.includes('name');
+        })
+        if (has_header) {
+          return sample;
+        } else {
+          sample.unshift(null_array)
+          return sample;
+        }
+      },
+      removeHeader(sample) {
+        var header = sample[0];
+        var has_header = header.find(item => {
+          return item.includes('phone') | item.includes('name');
+        })
+        if (has_header) {
+          sample.shift();
+        }
+        return sample;
+      },
+      saveData() {
+        var index = this.sample_rows[0].findIndex((item, index) => {
+          return item == "";
+        })
+        if (index > -1) {
+          this.error_upload_text = "Kolom ke-" + (index + 1) + " tidak memiliki atribut"
+          return;
+        }
+
+        if (this.sample_rows[0].includes('phone')) {
+          var header = this.sample_rows[0];
+          var data = [];
+          this.full_data = this.removeHeader(this.full_data);
+          this.member_numbers = this.full_data.length;
+          this.new_contacts = 0;
+          this.full_data.forEach((item, index) => {
+
+            var obj = {};
+            header.forEach((head, idx) => {
+              obj[head] = item[idx];
+            })
+            if (obj.phone)
+              data.push(obj);
+
+          })
+          this.json_data = data;
+          this.processToDatabase();
+          this.dialog = false;
+        } else {
+          this.error_upload_text = "Kolom phone tidak ada"
+        }
+      },
+      processToDatabase() {
+        var data = this.json_data.shift();
+        this.receive_contact++;;
+        this.progress_value = Math.floor(100 * this.receive_contact / this.member_numbers);
+
+        if (data) {
+          var phoneNumber = parsePhoneNumberFromString(data.phone, {
+            defaultCountry: this.ip_data.countryCode ? this.ip_data.countryCode : 'ID'
+          });
+
+          if (phoneNumber) {
+            if (phoneNumber.isValid()) {
+              data.wa_phone = phoneNumber.countryCallingCode + phoneNumber.nationalNumber;
+              data.list_id = this.tab.params.id;
+              if (!this.contact_obj[data.wa_phone]) {
+                ipc.sendSync('add-contact', {
+                  id: this.tab.id,
+                  data: data
+                });
+                this.contact_obj[data.wa_phone] = true;
+                this.new_contacts++;
+                setTimeout(() => {
+                  this.processToDatabase();
+                }, 5)
+              } else {
+                this.processToDatabase();
+              }
+            } else {
+              this.processToDatabase();
+            }
+          } else {
+            this.processToDatabase();
+          }
+        } else {
+          this.personal_contact_success = this.new_contacts+' Kontak Baru berhasil disimpan'
+          this.receive_contact = this.member_numbers;
+          this.list.headers = this.sample_rows[0];
+          ipc.sendSync('update-list', {
+            tab_id: this.tab.id,
+            list_id: this.list.id,
+            headers : this.list.headers,
+            total: Object.keys(this.contact_obj).length
+          });
+        }
+
+
+      },
       exportFile() {
 
         dialog.showSaveDialog({}).then(result => {
@@ -113,17 +281,31 @@
 
 
       saveToDatabase(contacts, name_index, phone_index) {
+        this.member_numbers = contacts.length;
+        console.log(phone_index)
+        this.processSave(contacts, name_index, phone_index, 0)
 
-
-        contacts.forEach((item, index) => {
-
-          if (item[phone_index]) {
-            var phoneNumber = parsePhoneNumberFromString(item[phone_index], {
-              defaultCountry: this.ip_data.countryCode ? this.ip_data.countryCode : 'ID'
-            });
-            if(phoneNumber)
-            {
-               if (phoneNumber.isValid()) {
+      },
+      processSave(contacts, name_index, phone_index, index) {
+        if (index == contacts.length - 1) {
+          this.receive_contact = this.member_numbers;
+          this.personal_contact_success = 'Kontak berhasil disimpan'
+          ipc.sendSync('update-list', {
+            tab_id: this.tab.id,
+            list_id: this.list.id,
+            total: Object.keys(this.contact_obj).length
+          });
+          return;
+        }
+        var item = contacts[index];
+        this.receive_contact = index;
+        this.progress_value = Math.floor(100 * this.receive_contact / this.member_numbers);
+        if (item[phone_index]) {
+          var phoneNumber = parsePhoneNumberFromString(item[phone_index], {
+            defaultCountry: this.ip_data.countryCode ? this.ip_data.countryCode : 'ID'
+          });
+          if (phoneNumber) {
+            if (phoneNumber.isValid()) {
 
               var data = {
                 name: item[name_index],
@@ -132,29 +314,54 @@
               };
               data.list_id = this.tab.params.id;
               if (!this.contact_obj[data.wa_phone]) {
+
                 ipc.sendSync('add-contact', {
                   id: this.tab.id,
                   data: data
                 });
                 this.contact_obj[data.wa_phone] = true;
+
+                setTimeout(() => {
+
+
+                  this.processSave(contacts, name_index, phone_index, index + 1)
+                }, 50)
+              } else {
+                setTimeout(() => {
+                  this.processSave(contacts, name_index, phone_index, index + 1)
+                }, 10)
               }
 
 
+            } else {
+              setTimeout(() => {
+                this.processSave(contacts, name_index, phone_index, index + 1)
+              }, 10)
             }
-            }
-
+          } else {
+            setTimeout(() => {
+              this.processSave(contacts, name_index, phone_index, index + 1)
+            }, 10)
           }
 
-          if (index == contacts.length - 1) {
-            this.personal_contact_success = 'Kontak berhasil disimpan'
-          }
+        } else {
+          setTimeout(() => {
+            this.processSave(contacts, name_index, phone_index, index + 1)
+          }, 10)
+        }
 
-        })
+
+
+
+
       },
+
       importContact() {
+
         dialog.showOpenDialog({
           properties: ['openFile']
         }).then(async result => {
+
           var text = await fs.readFileSync(result.filePaths[0], 'utf8')
 
           var sample = text.substring(0, 50);
@@ -162,25 +369,29 @@
           var delimiter_semi_colon = (sample.match(/;/g) || []).length;
 
           var arr = this.CSVToArray(text, delimiter_comma > delimiter_semi_colon ? ',' : ';');
-          if (arr.length > 0) {
-            var row_sample = '';
-            if (arr.length == 1) {
-              row_sample = arr[0][1];
-            } else if (arr.length > 1) {
-              row_sample = arr[1][1];
+          var sample = (arr.slice(0, 7))
+          this.sample_rows = this.checkHeader(sample)
+          this.dialog = true;
+          this.full_data = JSON.parse(JSON.stringify(arr));
+          // if (arr.length > 0) {
+          //   var row_sample = '';
+          //   if (arr.length == 1) {
+          //     row_sample = arr[0][1];
+          //   } else if (arr.length > 1) {
+          //     row_sample = arr[1][1];
 
-            }
-    console.log(row_sample)
-            const phoneNumber = parsePhoneNumberFromString(row_sample, {
-              defaultCountry: this.ip_data.countryCode ? this.ip_data.countryCode : 'ID'
-            })
-           if(phoneNumber)
-           {
-              this.saveToDatabase(arr, 0, 1)
-           }else{
-             alert('format data tidak pas, kolom 1 berisi nama, kolom 2 nomor handphone')
-           }
-          }
+          //   }
+
+          //   const phoneNumber = parsePhoneNumberFromString(row_sample, {
+          //     defaultCountry: this.ip_data.countryCode ? this.ip_data.countryCode : 'ID'
+          //   })
+          //  if(phoneNumber)
+          //  {
+          //     this.saveToDatabase(arr, 0, 1)
+          //  }else{
+          //    alert('format data tidak pas, kolom 1 berisi nama, kolom 2 nomor handphone')
+          //  }
+          // }
 
 
 
@@ -280,3 +491,22 @@
     }
   }
 </script>
+<style>
+  table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  td,
+  th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 4px 8px;
+
+  }
+
+  th {
+    /* background-color: #dddddd; */
+  }
+</style>
